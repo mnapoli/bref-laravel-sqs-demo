@@ -6,8 +6,6 @@ provider:
     runtime: provided
     environment:
         APP_ENV: production
-#        SQS_PREFIX:
-#            Fn::Join: ['', [ 'https://sqs.us-east-1.amazonaws.com/', { Ref: AWS::AccountId } ]]
         SQS_QUEUE:
             Ref: AlertQueue
     iamRoleStatements:
@@ -54,6 +52,7 @@ plugins:
 resources:
     Resources:
 
+        # The queue
         AlertQueue:
             Type: AWS::SQS::Queue
             Properties:

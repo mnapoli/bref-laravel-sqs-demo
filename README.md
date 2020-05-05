@@ -71,10 +71,10 @@ provider:
     ...
     environment:
         APP_ENV: production
-        SQS_PREFIX:
-            Fn::Join: ['', [ 'https://sqs.us-east-1.amazonaws.com/', { Ref: AWS::AccountId } ]]
         SQS_QUEUE:
             Ref: AlertQueue
+        # If you create the queue manually, the `SQS_QUEUE` variable can be defined like this:
+        # SQS_QUEUE: https://sqs.us-east-1.amazonaws.com/your-account-id/my-queue
     iamRoleStatements:
         # Allows our code to interact with SQS
         -   Effect: Allow
@@ -84,29 +84,26 @@ provider:
 
 functions:
 
-    website:
-        handler: public/index.php
-        timeout: 28 # in seconds (API Gateway has a timeout of 29 seconds)
-        layers:
-            - ${bref:layer.php-73-fpm}
-        events:
-            -   http: 'ANY /'
-            -   http: 'ANY /{proxy+}'
+    ...
 
     worker:
         handler: worker.php
         layers:
             - ${bref:layer.php-73}
         events:
+            # Declares that our worker is triggered by jobs in SQS
             -   sqs:
                     arn:
                         Fn::GetAtt: [ AlertQueue, Arn ]
+                    # If you create the queue manually, the line above could be:
+                    # arn: 'arn:aws:sqs:us-east-1:1234567890:my_sqs_queue'
                     # Only 1 item at a time to simplify error handling
                     batchSize: 1
 
 resources:
     Resources:
 
+        # The SQS queue
         AlertQueue:
             Type: AWS::SQS::Queue
             Properties:
@@ -123,17 +120,19 @@ resources:
                 MessageRetentionPeriod: 1209600 # maximum retention: 14 days
 ```
 
+As you can see in the `provider.environment` key, we define the `SQS_QUEUE` environment variable. This is how we configure Laravel to use that queue.
+
+If you want to create the SQS queue manually, you will need to set that variable either via `serverless.yml` or the `.env` file.
+
 ### Laravel
 
 First, you need to configure [Laravel Queues](https://laravel.com/docs/7.x/queues) to use the SQS queue.
 
-You can achieve this by setting the `QUEUE_CONNECTION` environment variable to `sqs` and configuring the rest:
+You can achieve this by setting the `QUEUE_CONNECTION` environment variable to `sqs`:
 
 ```dotenv
 # .env
 QUEUE_CONNECTION=sqs
-SQS_PREFIX=https://sqs.us-east-1.amazonaws.com/your-account-id
-SQS_QUEUE=my_sqs_queue
 AWS_DEFAULT_REGION=us-east-1
 ```
 
@@ -148,7 +147,7 @@ Note that on AWS Lambda, you do not need to create `AWS_ACCESS_KEY_ID` and `AWS_
             'prefix' => env('SQS_PREFIX', 'https://sqs.us-east-1.amazonaws.com/your-account-id'),
 ```
 
-Next, create a `handler.php` file. This is the file that will handle SQS events in AWS Lambda:
+Next, create a `worker.php` file. This is the file that will handle SQS events in AWS Lambda:
 
 ```php
 <?php declare(strict_types=1);
@@ -164,31 +163,14 @@ $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 
 return $app->makeWith(LaravelSqsHandler::class, [
-    'connection' => 'sqs',
+    'connection' => 'sqs', // this is the Laravel Queue connection
     'queue' => getenv('SQS_QUEUE'),
 ]);
 ```
 
 You may need to adjust the `connection` and `queue` options above if you customized the configuration in `config/queue.php`. If you are unsure, have a look [at the official Laravel documentation about connections and queues](https://laravel.com/docs/7.x/queues#connections-vs-queues).
 
-We can now configure our handler in `serverless.yml`:
-
-```yaml
-functions:
-    worker:
-        handler: handler.php
-        timeout: 20 # in seconds
-        reservedConcurrency: 5 # max. 5 messages processed in parallel
-        layers:
-            - ${bref:layer.php-74}
-        events:
-            - sqs:
-                arn: arn:aws:sqs:us-east-1:1234567890:my_sqs_queue
-                # Only 1 item at a time to simplify error handling
-                batchSize: 1
-```
-
-That's it! Anytime a job is pushed to the `my_sqs_queue`, SQS will invoke `handler.php` and our job will be executed.
+That's it! Anytime a job is pushed to the SQS queue, SQS will invoke `worker.php` on AWS Lambda and our job will be executed.
 
 ### Differences and limitations
 
