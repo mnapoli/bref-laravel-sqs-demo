@@ -1,6 +1,12 @@
-**This is the documentation for https://github.com/brefphp/laravel-bridge**
+Welcome,
 
-This repository also includes a full example on how to use SQS with Laravel Queues on AWS Lambda. You can clone this repository and deploy it via `serverless deploy`. Read [Bref installation](https://bref.sh/docs/installation.html) and [Deploying with Bref](https://bref.sh/docs/deploy.html) if this is your first time.
+This repository is a place where you will find:
+
+- documentation for setting up Laravel Queue on AWS Lambda with SQS (this README)
+- a complete working example (this repository)
+- a place to ask questions (in the issues of this repository)
+
+To run the example, you can clone this repository and deploy it via `serverless deploy`. Read [Bref installation](https://bref.sh/docs/installation.html) and [Deploying with Bref](https://bref.sh/docs/deploy.html) if this is your first time.
 
 ---
 
