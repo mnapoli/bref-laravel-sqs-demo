@@ -12,5 +12,5 @@ $kernel->bootstrap();
 
 return $app->makeWith(LaravelSqsHandler::class, [
     'connection' => 'sqs',
-    'queue' => getenv('SQS_QUEUE'),
+    'queue'      => getenv('SQS_PREFIX') . '/' . getenv('SQS_QUEUE'),
 ]);
