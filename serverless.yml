@@ -6,6 +6,7 @@ provider:
     runtime: provided
     environment:
         APP_ENV: production
+        SQS_REGION: ${self:provider.region} # Required if not using the default region
         SQS_QUEUE:
             Ref: AlertQueue
     iamRoleStatements:
